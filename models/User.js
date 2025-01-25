@@ -15,39 +15,6 @@ const UserSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    profileImage: {
-        type: String,
-        default: ''
-    },
-    bio: {
-        type: String,
-        default: ''
-    },
-    followers: {
-        type: Number,
-        default: 0
-    },
-    following: {
-        type: Number,
-        default: 0
-    },
-    role: {
-        type: String,
-        default: 'user'
-    },
-    // Add a relationship to the BusinessAndService model
-    businesses: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'BusinessAndService'
-    }],
-    comments: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'CommentAndRating'
-    }],
-    PlanType: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'PricingPlan', // Single ObjectId
-    },
 });
 
 const User = mongoose.model('User', UserSchema);

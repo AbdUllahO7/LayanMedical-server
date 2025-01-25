@@ -1,6 +1,6 @@
 // controllers/commentAndRatingController.js
 
-const BusinessAndService = require("../../models/BusinessAndService");
+const BusinessAndService = require("../../models/Products");
 const CommentAndRating = require("../../models/CommentAndRating");
 const User = require("../../models/User");
 

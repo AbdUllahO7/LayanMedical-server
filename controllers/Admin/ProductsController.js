@@ -1,10 +1,10 @@
 
-// controllers/user/BusinessAndServiceController.js
+// controllers/user/ProductsController.js
 const { imageUploadUtil } = require('../../helpers/cloudinary');
-const BusinessAndService = require('../../models/BusinessAndService');
+const Products = require('../../models/Products');
 const AdminCategories = require('../../models/Categories');
 const mongoose = require('mongoose');
-const { createErrorResponse, getSortOption, buildSearchQuery } = require('../../utils/utils');
+const { createErrorResponse, getSortOption, buildSearchQuery, validateCategories, validateSubCategories, createSuccessResponse } = require('../../utils/utils');
 
 exports.handleImageUpload = async (req, res) => {
     try {
@@ -22,9 +22,13 @@ exports.handleImageUpload = async (req, res) => {
 
 // Create a new business
 exports.createBusiness = async (req, res) => {
+
+
+    console.log("create ")
     const { BusinessType, category = [], subCategory = [], features = [] } = req.body;
 
     const commonRequiredFields = ['title', 'description', 'BusinessType', 'category', 'owner', 'email', 'images', 'BusinessOrAd'];
+    console.log(req.body)
     const locationRequiredFields = BusinessType === "Location" ? ['country', 'state', 'city', 'fullAddress'] : [];
     const requiredFields = [...commonRequiredFields, ...locationRequiredFields];
 
@@ -34,15 +38,18 @@ exports.createBusiness = async (req, res) => {
     }
 
     try {
-        const invalidCategories = await this.validateCategories(category);
+
+        const invalidCategories = await validateCategories(category);
         if (invalidCategories.length > 0) {
             return createErrorResponse(res, 400, `Invalid category IDs: ${invalidCategories.join(', ')}`);
         }
 
-        const invalidSubCategories = await this.validateSubCategories(subCategory);
+
+        const invalidSubCategories = await validateSubCategories(subCategory);
         if (invalidSubCategories.length > 0) {
             return createErrorResponse(res, 400, `Invalid subCategory IDs: ${invalidSubCategories.join(', ')}`);
         }
+        console.log("saved")
 
         if (!Array.isArray(features)) {
             return createErrorResponse(res, 400, 'Features must be an array.');
@@ -55,9 +62,11 @@ exports.createBusiness = async (req, res) => {
             });
         }
 
-        const newBusiness = new BusinessAndService(newBusinessData);
+        const newBusiness = new Products(newBusinessData);
         const savedBusiness = await newBusiness.save();
-        return this.createSuccessResponse(res, 201, savedBusiness);
+        console.log(savedBusiness)
+
+        return createSuccessResponse(res, 201, savedBusiness);
     } catch (error) {
         return createErrorResponse(res, 400, error.message);
     }
@@ -72,7 +81,7 @@ exports.getBusinessWithDetails = async (req, res) => {
         const searchQuery = buildSearchQuery(search);
         const sortOption = getSortOption(sort);
 
-        const businesses = await BusinessAndService.find(searchQuery)
+        const businesses = await Products.find(searchQuery)
             .populate('owner')
             .populate({ path: 'category', select: 'title image' })
             .sort(sortOption)
@@ -92,7 +101,7 @@ exports.getBusinessWithDetails = async (req, res) => {
             })
         );
 
-        const totalCount = await BusinessAndService.countDocuments(searchQuery);
+        const totalCount = await Products.countDocuments(searchQuery);
         return res.status(200).json({
             success: true,
             data: businessDetails,
@@ -159,7 +168,7 @@ exports.getAcceptBusinessWithDetails = async (req, res) => {
         }[sort] || {}; // Default to no sorting
 
         // Fetch businesses with filters and pagination
-        const businesses = await BusinessAndService.find(filters)
+        const businesses = await Products.find(filters)
             .populate('owner') // Populate owner details
             .populate({
                 path: 'category',
@@ -200,7 +209,7 @@ exports.getAcceptBusinessWithDetails = async (req, res) => {
         );
 
         // Total count for pagination
-        const totalCount = await BusinessAndService.countDocuments(filters);
+        const totalCount = await Products.countDocuments(filters);
 
         res.status(200).json({
             success: true,
@@ -271,7 +280,7 @@ exports.updateBusiness = async (req, res) => {
         };
 
         // Update the business only if validation is successful
-        const updatedBusiness = await BusinessAndService.findByIdAndUpdate(req.params.id, updatedBusinessData, { new: true });
+        const updatedBusiness = await Products.findByIdAndUpdate(req.params.id, updatedBusinessData, { new: true });
 
         if (!updatedBusiness) {
             return res.status(404).json({ success: false, message: 'Business not found' });
@@ -287,7 +296,7 @@ exports.updateBusiness = async (req, res) => {
 // Delete a business by ID
 exports.deleteBusiness = async (req, res) => {
     try {
-        const deletedBusiness = await BusinessAndService.findByIdAndDelete(req.params.id);
+        const deletedBusiness = await Products.findByIdAndDelete(req.params.id);
         if (!deletedBusiness) return res.status(404).json({  success :false , message: 'Business not found' });
         res.status(200).json({ success :true ,  message: 'Business deleted successfully' });
     } catch (error) {
@@ -300,7 +309,7 @@ exports.getBusinessesByUserId = async (req, res) => {
     try {
         const userId = req.params.userId;
         // Step 1: Find all businesses with the selected categories and subCategories IDs
-        const businesses = await BusinessAndService.find({owner : userId})
+        const businesses = await Products.find({owner : userId})
             .populate('owner') // Populate owner details
             .populate({
                 path: 'category', // Populate main category details
@@ -338,7 +347,7 @@ exports.getBusinessById = async (req, res) => {
         const { id } = req.params;
         
         // Find the business by ID and populate owner and category details
-        const business = await BusinessAndService.findById(id)
+        const business = await Products.findById(id)
             .populate('owner') // Populate owner details
             .populate({
                 path: 'category', // Populate main category details
@@ -391,7 +400,7 @@ exports.updateOpenValue = async (req, res) => {
             return res.status(400).json({ message: "'open' must be a boolean value." });
         }
 
-        const updatedBusiness = await BusinessAndService.findByIdAndUpdate(
+        const updatedBusiness = await Products.findByIdAndUpdate(
             id,
             { open },
             { new: true } // Return the updated document
