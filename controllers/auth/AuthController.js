@@ -38,53 +38,63 @@ const registerUser = async (req, res) => {
         console.log(error); // Log any server-side errors
         res.status(500).json({ success: false, message: "Some error occurred" });
     }
-};
-
+}
 
 
 const loginUser = async (req, res) => {
-    try {
+        try {
         const { email, password } = req.body;
-
-        // Check if user exists
-        const user = await User.findOne({ email }).populate('PlanType'); // Populate PlanType with full plan data
-        if (!user) return res.status(400).json({ message: "User not found" });
-
-        // Check if password is correct
+        console.log("Received email:", email, "Received password:", password);
+    
+        // Check if the user exists by email
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "User not found" });
+        }
+    
+        // Compare the provided password with the stored hashed password
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Invalid password" });
-
-        // Create a JWT token with user info (id, role, and email)
-        const token = jwt.sign({
+        console.log("Password match result:", isMatch);
+    
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Invalid password" });
+        }
+    
+        // Create a JWT token
+        const token = jwt.sign(
+            {
             id: user._id,
             role: user.role,
             email: user.email,
             userName: user.userName,
-            followers: user.followers,
-            PlanType: user.PlanType ,
-            following:user.following
-        }, 'CLIENT_SECRET_KEY', { expiresIn: '60min' }); // Token expires in 60 minutes
-
-        // Send the JWT token as an HTTP-only cookie and respond with success message
-        res.cookie('token', token, { httpOnly: true, secure: false }).json({
+            },
+            process.env.JWT_SECRET_KEY || 'CLIENT_SECRET_KEY',
+            { expiresIn: '60min' }
+        );
+    
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+        }).json({
             success: true,
             message: "User logged in successfully",
             user: {
-                email: user.email,
-                role: user.role,
-                id: user._id,
-                userName: user.userName,
-                followers: user.followers,
-                following: user.following,
-                PlanType: user.PlanType 
+            email: user.email,
+            userName: user.userName,
+            id: user._id,
             }
         });
-        
-    } catch (error) {
-        console.log(error);
-        res.status(400).json({ success : false,  message: "Login error occurred" });
-    }
-};
+        } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({ success: false, message: "Login error occurred", error: error.message });
+        }
+    };
+    
+
+
+
+
 
 
 // Logout function: Clears the authentication token from the cookie
@@ -133,3 +143,32 @@ const authMiddleware = async (req, res, next) => {
 
 
 module.exports = { registerUser, loginUser, logoutUser, authMiddleware };
+
+
+
+const hashExistingPassword = async () => {
+  try {
+    // Find the user with the plain text password (e.g., admin@admin.com)
+    const user = await User.findOne({ email: 'admin@admin.com' });
+    
+    if (user) {
+      // Check if the password is already hashed (if it starts with bcrypt hash prefix, it is hashed)
+      if (!user.password.startsWith('$2a$')) {
+        const hashedPassword = await bcrypt.hash(user.password, 10); // Hash the password
+        user.password = hashedPassword; // Update with hashed password
+
+        // Save the updated user object with hashed password
+        await user.save();
+        console.log(`Password for user ${user.email} has been hashed and updated.`);
+      } else {
+        console.log("Password is already hashed.");
+      }
+    } else {
+      console.log("User not found.");
+    }
+  } catch (err) {
+    console.error("Error updating password:", err);
+  }
+};
+
+hashExistingPassword();
