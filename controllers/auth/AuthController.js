@@ -1,7 +1,6 @@
 const User = require("../../models/User");
 const bcrypt = require('bcryptjs') // Library for hashing and comparing passwords.
 const jwt = require('jsonwebtoken'); // Library for generating and verifying JSON Web Tokens (JWT).
-const pricingPlan = require("../../models/pricingPlan");
 
 
 
@@ -17,8 +16,6 @@ const registerUser = async (req, res) => {
         // Hash the password with bcrypt before storing it in the database
         const hashPassword = await bcrypt.hash(password, 12);
 
-        // Fetch the default pricing plan
-        const defaultPlan = await pricingPlan.findOne({ title: 'Basic' }); // Adjust query as needed
 
         // Create a new user instance with the provided username, email, hashed password, and default plan
         const newUser = new User({
