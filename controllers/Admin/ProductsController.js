@@ -20,16 +20,16 @@ exports.handleImageUpload = async (req, res) => {
 };
 
 
-// Create a new business
-exports.createBusiness = async (req, res) => {
+// Create a new Products
+exports.createProducts = async (req, res) => {
 
 
     console.log("create ")
-    const { BusinessType, category = [], subCategory = [], features = [] } = req.body;
+    const { ProductsType, category = [], subCategory = [], features = [] } = req.body;
 
-    const commonRequiredFields = ['title', 'description', 'BusinessType', 'category', 'owner', 'email', 'images', 'BusinessOrAd'];
+    const commonRequiredFields = ['title', 'description', 'ProductsType', 'category', 'owner', 'email', 'images', 'ProductsOrAd'];
     console.log(req.body)
-    const locationRequiredFields = BusinessType === "Location" ? ['country', 'state', 'city', 'fullAddress'] : [];
+    const locationRequiredFields = ProductsType === "Location" ? ['country', 'state', 'city', 'fullAddress'] : [];
     const requiredFields = [...commonRequiredFields, ...locationRequiredFields];
 
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -55,179 +55,25 @@ exports.createBusiness = async (req, res) => {
             return createErrorResponse(res, 400, 'Features must be an array.');
         }
 
-        const newBusinessData = { ...req.body, features };
-        if (BusinessType === "Online") {
+        const newProductsData = { ...req.body, features };
+        if (ProductsType === "Online") {
             ['country', 'state', 'city'].forEach(field => {
-                newBusinessData[field] = newBusinessData[field] || "";
+                newProductsData[field] = newProductsData[field] || "";
             });
         }
 
-        const newBusiness = new Products(newBusinessData);
-        const savedBusiness = await newBusiness.save();
-        console.log(savedBusiness)
+        const newProducts = new Products(newProductsData);
+        const savedProducts = await newProducts.save();
+        console.log(savedProducts)
 
-        return createSuccessResponse(res, 201, savedBusiness);
+        return createSuccessResponse(res, 201, savedProducts);
     } catch (error) {
         return createErrorResponse(res, 400, error.message);
     }
 };
 
-
-// Get all businesses with user, category, and subCategory details
-exports.getBusinessWithDetails = async (req, res) => {
-    const { sort, search, page = 1, limit = 10 } = req.query;
-
-    try {
-        const searchQuery = buildSearchQuery(search);
-        const sortOption = getSortOption(sort);
-
-        const businesses = await Products.find(searchQuery)
-            .populate('owner')
-            .populate({ path: 'category', select: 'title image' })
-            .sort(sortOption)
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
-
-        const businessDetails = await Promise.all(
-            businesses.map(async (business) => {
-                const categories = await AdminCategories.find({ _id: { $in: business.category } });
-                const categoryDetails = categories.map(cat => ({ _id: cat._id, title: cat.title, image: cat.image }));
-                const subCategoryDetails = categories.flatMap(cat =>
-                    cat.subCategories.filter(sub => business.subCategory.includes(sub._id.toString()))
-                        .map(sub => ({ _id: sub._id, title: sub.title }))
-                );
-
-                return { ...business.toObject(), categoryDetails, subCategoryDetails };
-            })
-        );
-
-        const totalCount = await Products.countDocuments(searchQuery);
-        return res.status(200).json({
-            success: true,
-            data: businessDetails,
-            totalCount,
-            currentPage: page,
-            totalPages: Math.ceil(totalCount / limit),
-        });
-    } catch (error) {
-        return createErrorResponse(res, 500, error.message);
-    }
-};
-
-
-exports.getAcceptBusinessWithDetails = async (req, res) => {
-    try {
-        const { category = '', subCategory = '', sort, search, country, state, city, page = 1, limit = 10 } = req.query;
-
-        // Fetch category IDs based on title
-        let categoryIds = [];
-        if (category) {
-            const categories = await AdminCategories.find({
-                title: { $regex: category, $options: 'i' }, // Match category title (case-insensitive)
-            }).select('_id');
-            categoryIds = categories.map(cat => cat._id); // Extract category IDs
-        }
-
-        let subCategoryIds = [];
-        if (subCategory) {
-            const categories = await AdminCategories.find({
-                'subCategories.title': { $regex: subCategory, $options: 'i' }
-            }).select('subCategories._id subCategories.title');
-        
-            subCategoryIds = categories.flatMap(cat =>
-                cat.subCategories
-                    .filter(sub => sub.title.match(new RegExp(subCategory, 'i')))
-                    .map(sub => sub._id.toString())
-            );
-        }
-        
-        // Construct filters
-        const filters = {
-            Accept: true,
-            ...(categoryIds.length ? { category: { $in: categoryIds } } : {}), // Match category IDs
-            ...(subCategoryIds.length ? { subCategory: { $in: subCategoryIds } } : {}), // Match subCategory IDs
-            ...(search
-                ? {
-                    $or: [
-                        { title: { $regex: search, $options: 'i' } },
-                        { description: { $regex: search, $options: 'i' } },
-                    ],
-                }
-                : {}),
-            ...(country ? { country: { $regex: country, $options: 'i' } } : {}),
-            ...(state ? { state: { $regex: state, $options: 'i' } } : {}),
-            ...(city ? { city: { $regex: city, $options: 'i' } } : {}),
-        };
-
-        // Sorting logic
-        const sortOption = {
-            "title-atoz": { title: 1 },
-            "title-ztoa": { title: -1 },
-            "time-newest": { createdAt: -1 },
-            "time-oldest": { createdAt: 1 },
-        }[sort] || {}; // Default to no sorting
-
-        // Fetch businesses with filters and pagination
-        const businesses = await Products.find(filters)
-            .populate('owner') // Populate owner details
-            .populate({
-                path: 'category',
-                select: 'title image',
-            })
-            .sort(sortOption)
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
-
-        // Map business data with category and subCategory details
-        const businessDataWithCategoriesAndSubCategories = await Promise.all(
-            businesses.map(async (business) => {
-                const categories = await AdminCategories.find({
-                    _id: { $in: business.category },
-                });
-
-                const categoryDetails = categories.map(category => ({
-                    _id: category._id,
-                    title: category.title,
-                    image: category.image,
-                }));
-
-                const subCategoryDetails = categories.flatMap(category =>
-                    category.subCategories.filter(subCat =>
-                        business.subCategory.includes(subCat._id.toString())
-                    ).map(subCat => ({
-                        _id: subCat._id,
-                        title: subCat.title,
-                    }))
-                );
-
-                return {
-                    ...business.toObject(),
-                    categoryDetails,
-                    subCategoryDetails,
-                };
-            })
-        );
-
-        // Total count for pagination
-        const totalCount = await Products.countDocuments(filters);
-
-        res.status(200).json({
-            success: true,
-            data: businessDataWithCategoriesAndSubCategories,
-            totalCount,
-            currentPage: page,
-            totalPages: Math.ceil(totalCount / limit),
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-
-
-// Update a business by ID
-exports.updateBusiness = async (req, res) => {
+// Update a Products by ID
+exports.updateProducts = async (req, res) => {
     const requiredFields = ['title', 'description', 'category', 'owner', 'email', 'country', 'state', 'city', 'images', 'subCategory', 'fullAddress'];
     const missingFields = requiredFields.filter(field => req.body[field] === undefined);
 
@@ -273,101 +119,64 @@ exports.updateBusiness = async (req, res) => {
         }
 
         // Prepare the data for updating
-        const updatedBusinessData = {
+        const updatedProductsData = {
             ...req.body,
             features,   // Ensure features is passed correctly as an array
             listImages, // Update the listImages field with the new array
         };
 
-        // Update the business only if validation is successful
-        const updatedBusiness = await Products.findByIdAndUpdate(req.params.id, updatedBusinessData, { new: true });
+        // Update the Products only if validation is successful
+        const updatedProducts = await Products.findByIdAndUpdate(req.params.id, updatedProductsData, { new: true });
 
-        if (!updatedBusiness) {
-            return res.status(404).json({ success: false, message: 'Business not found' });
+        if (!updatedProducts) {
+            return res.status(404).json({ success: false, message: 'Products not found' });
         }
 
-        res.status(200).json({ success: true, data: updatedBusiness });
+        res.status(200).json({ success: true, data: updatedProducts });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
 };
 
 
-// Delete a business by ID
-exports.deleteBusiness = async (req, res) => {
+// Delete a Products by ID
+exports.deleteProducts = async (req, res) => {
     try {
-        const deletedBusiness = await Products.findByIdAndDelete(req.params.id);
-        if (!deletedBusiness) return res.status(404).json({  success :false , message: 'Business not found' });
-        res.status(200).json({ success :true ,  message: 'Business deleted successfully' });
+        const deletedProducts = await Products.findByIdAndDelete(req.params.id);
+        if (!deletedProducts) return res.status(404).json({  success :false , message: 'Products not found' });
+        res.status(200).json({ success :true ,  message: 'Products deleted successfully' });
     } catch (error) {
         res.status(500).json({ success :false ,  message: error.message });
     }
 };
 
-// Get all businesses for a specific user
-exports.getBusinessesByUserId = async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        // Step 1: Find all businesses with the selected categories and subCategories IDs
-        const businesses = await Products.find({owner : userId})
-            .populate('owner') // Populate owner details
-            .populate({
-                path: 'category', // Populate main category details
-                select: 'title image',
-            });
-        // Step 2: Populate subCategory details manually
-        const businessDataWithSubCategories = await Promise.all(
-            businesses.map(async (business) => {
-                // Find all subCategories within the matched categories that correspond to the subCategory IDs
-                const categories = await AdminCategories.find({
-                    _id: { $in: business.category },
-                    'subCategories._id': { $in: business.subCategory }
-                });
 
-                // Extract details of all matching subCategories
-                const subCategoryDetails = categories.flatMap(category =>
-                    category.subCategories.filter(subCat => business.subCategory.includes(subCat._id.toString()))
-                );
-
-                return {
-                    ...business.toObject(),
-                    subCategoryDetails,
-                };
-            })
-        );
-
-        res.status(200).json({ success: true, data: businessDataWithSubCategories });
-    }catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-exports.getBusinessById = async (req, res) => {
+exports.getProductsById = async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Find the business by ID and populate owner and category details
-        const business = await Products.findById(id)
+        // Find the Products by ID and populate owner and category details
+        const Products = await Products.findById(id)
             .populate('owner') // Populate owner details
             .populate({
                 path: 'category', // Populate main category details
                 select: 'title image',
             });
         
-        if (!business) {
-            return res.status(404).json({ success: false, message: 'Business not found' });
+        if (!Products) {
+            return res.status(404).json({ success: false, message: 'Products not found' });
         }
 
-        // Get categories that match the business's category IDs and contain the business's subCategory IDs
+        // Get categories that match the Products's category IDs and contain the Products's subCategory IDs
         const categories = await AdminCategories.find({
-            _id: { $in: business.category },
-            'subCategories._id': { $in: business.subCategory },
+            _id: { $in: Products.category },
+            'subCategories._id': { $in: Products.subCategory },
         });
 
         // Extract details of all matching subCategories
         const subCategoryDetails = categories.flatMap(category =>
             category.subCategories.filter(subCat => 
-                business.subCategory.includes(subCat._id.toString())
+                Products.subCategory.includes(subCat._id.toString())
             ).map(subCat => ({
                 _id: subCat._id,
                 title: subCat.title,
@@ -375,11 +184,11 @@ exports.getBusinessById = async (req, res) => {
             }))
         );
 
-        // Return the business data with populated subCategory details
+        // Return the Products data with populated subCategory details
         res.status(200).json({
             success: true,
             data: {
-                ...business.toObject(),
+                ...Products.toObject(),
                 subCategoryDetails,
             },
         });
@@ -390,29 +199,5 @@ exports.getBusinessById = async (req, res) => {
 };
 
 
-// Update 'open' value
-exports.updateOpenValue = async (req, res) => {
-    try {
-        const { id } = req.params; // ID of the business or service
-        const { open } = req.body; // New open value
 
-        if (typeof open !== "boolean") {
-            return res.status(400).json({ message: "'open' must be a boolean value." });
-        }
-
-        const updatedBusiness = await Products.findByIdAndUpdate(
-            id,
-            { open },
-            { new: true } // Return the updated document
-        );
-
-        if (!updatedBusiness) {
-            return res.status(404).json({ success : false ,  message: 'Business or Service not found.' });
-        }
-
-        res.status(200).json({success : true ,  data : updatedBusiness});
-    } catch (error) {
-        res.status(500).json({ success : false , message: 'An error occurred.', error: error.message });
-    }
-};
 

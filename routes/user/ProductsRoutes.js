@@ -9,15 +9,10 @@ const router = express.Router();
 router.post('/upload-image', upload.single('my_file'), ProductsController.handleImageUpload);
 
 // Business CRUD routes
-router.post('/', ProductsController.createBusiness);
-router.get('/', ProductsController.getBusinessWithDetails);
-router.get('/Accept', ProductsController.getAcceptBusinessWithDetails);
+router.post('/', ProductsController.createProducts);
+router.get('/:id', ProductsController.getProductsById);
+router.put('/:id', ProductsController.updateProducts);
+router.delete('/:id', ProductsController.deleteProducts);
 
-router.get('/:id', ProductsController.getBusinessById);
-router.put('/:id', ProductsController.updateBusiness);
-router.delete('/:id', ProductsController.deleteBusiness);
-
-router.get('/ProductsController/:userId', ProductsController.getBusinessesByUserId);
-router.put('/:id/open', ProductsController.updateOpenValue);
 
 module.exports = router;
