@@ -54,7 +54,8 @@ app.use('/api/auth' , authRouter)
 
 // user 
 app.use('/api/ProductsRoutes' , ProductsRoutes)
-app.use('/api/AdminCategories', CategoriesRoutes)
+app.use('/api/Categories', CategoriesRoutes)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 
