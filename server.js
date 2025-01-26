@@ -18,7 +18,6 @@ const CategoriesRoutes = require('./routes/admin/CategoryRoutes')
 
 
 // stripe 
-const stripeRoutes = require('./routes/stripe.js');
 require("dotenv").config();
 
 mongoose
