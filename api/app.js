@@ -6,15 +6,15 @@ const cors = require("cors");
 const path = require("path");
 // routes 
 
-const authRouter = require('./routes/auth/authRoutes.js')
+const authRouter = require('../routes/auth/authRoutes.js')
 
 // user 
-const ProductsRoutes = require('./routes/user/ProductsRoutes.js')
+const ProductsRoutes = require('../routes/user/ProductsRoutes.js')
 
 
 
 // admin 
-const CategoriesRoutes = require('./routes/admin/CategoryRoutes.js')
+const CategoriesRoutes = require('../routes/admin/CategoryRoutes.js')
 
 
 // stripe 
