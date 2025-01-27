@@ -6,15 +6,15 @@ const cors = require("cors");
 const path = require("path");
 // routes 
 
-const authRouter = require('../routes/auth/authRoutes.js')
+const authRouter = require('./routes/auth/authRoutes.js')
 
 // user 
-const ProductsRoutes = require('../routes/user/ProductsRoutes.js')
+const ProductsRoutes = require('./routes/user/ProductsRoutes.js')
 
 
 
 // admin 
-const CategoriesRoutes = require('../routes/admin/CategoryRoutes.js')
+const CategoriesRoutes = require('./routes/admin/CategoryRoutes.js')
 
 
 // stripe 
@@ -26,12 +26,13 @@ mongoose
     .catch((error) => console.log("MongoDB connection error:", error));
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ||5000;
+const allowedOrigins = ["http://localhost:5174", "http://localhost:5173" , "http://localhost:5175"]
 
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL,
+        origin: allowedOrigins,
         methods: ["GET", "POST", "DELETE", "PUT"],
         allowedHeaders: [
             "Content-Type",
