@@ -8,7 +8,6 @@ const path = require("path");
 
 const authRouter = require('./routes/auth/authRoutes.js')
 
-// user 
 const ProductsRoutes = require('./routes/user/ProductsRoutes.js')
 
 
@@ -17,7 +16,6 @@ const ProductsRoutes = require('./routes/user/ProductsRoutes.js')
 const CategoriesRoutes = require('./routes/admin/CategoryRoutes.js')
 
 
-// stripe 
 require("dotenv").config();
 
 mongoose
@@ -26,7 +24,7 @@ mongoose
     .catch((error) => console.log("MongoDB connection error:", error));
 
 const app = express();
-const PORT = process.env.PORT ||5000;
+const PORT = process.env.PORT || 5000;
 const allowedOrigins = ["http://localhost:5174", "http://localhost:5173" , "http://localhost:5175"]
 
 
@@ -47,7 +45,9 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json());
-
+app.get("/", (req, res) => {
+    res.send("server OK");
+});
 
 // the routes 
 app.use('/api/auth' , authRouter)
