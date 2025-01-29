@@ -3,6 +3,7 @@ const Products = require('../../models/Products');
 const AdminCategories = require('../../models/Categories');
 const { createErrorResponse, validateCategories, createSuccessResponse } = require('../../utils/utils');
 
+// Handle Image Upload
 exports.handleImageUpload = async (req, res) => {
     try {
         const b64 = Buffer.from(req.file.buffer).toString('base64');
@@ -16,127 +17,103 @@ exports.handleImageUpload = async (req, res) => {
     }
 };
 
-
-// Get all Products
+// Get All Products
 exports.getAllProducts = async (req, res) => {
     try {
-        // Retrieve all products and populate category details
         const products = await Products.find()
-            .populate('category', 'title image') // Populate category title and image
-            .sort({ createdAt: -1 }); // Sort by creation date in descending order
+            .populate('categories', 'title image')
+            .sort({ createdAt: -1 });
 
-        if (!products || products.length === 0) {
+        if (!products.length) {
             return res.status(404).json({ success: false, message: 'No products found' });
         }
 
         res.status(200).json({ success: true, data: products });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Failed to fetch products.' });
     }
 };
 
-
-// Create a new Product
+// Create a New Product
 exports.createProducts = async (req, res) => {
-    const { title, description, category = [], features = [], listImages = [] } = req.body;
-
-    const commonRequiredFields = ['title', 'description', 'category', 'owner', 'email', 'images', 'ProductsOrAd'];
-    const locationRequiredFields = req.body.ProductsType === "Location" ? ['country', 'state', 'city', 'fullAddress'] : [];
-    const requiredFields = [...commonRequiredFields, ...locationRequiredFields];
-
-    const missingFields = requiredFields.filter(field => !req.body[field]);
-    if (missingFields.length > 0) {
-        return createErrorResponse(res, 400, `Missing required fields: ${missingFields.join(', ')}`);
-    }
-
+    const { title, description, categories = [], features = [], listImages = [] } = req.body;
+    console.log(title , description , categories)
     try {
+        // Validate required fields
+        if (!title || !description || !categories.length) {
+            return createErrorResponse(res, 400, 'Title, description, and at least one categories are required.');
+        }
+
         // Validate categories
-        const invalidCategories = await validateCategories(category);
+        const invalidCategories = await validateCategories(categories);
         if (invalidCategories.length > 0) {
-            return createErrorResponse(res, 400, `Invalid category IDs: ${invalidCategories.join(', ')}`);
+            return createErrorResponse(res, 400, `Invalid categories IDs: ${invalidCategories.join(', ')}`);
         }
 
-        // Ensure features is an array if provided
-        if (features && !Array.isArray(features)) {
-            return createErrorResponse(res, 400, 'Features must be an array.');
-        }
-
-        // Prepare the new product data
-        const newProductData = { title, description, category, features, listImages };
-
-        // Create and save the new product
+        const newProductData = { title, description, categories, features, listImages };
         const newProduct = new Products(newProductData);
         const savedProduct = await newProduct.save();
 
         return createSuccessResponse(res, 201, savedProduct);
     } catch (error) {
-        return createErrorResponse(res, 400, error.message);
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Failed to create product.' });
     }
 };
-
 
 // Update a Product by ID
 exports.updateProducts = async (req, res) => {
-    const { title, description, category = [], features = [], listImages = [] } = req.body;
+    const { title, description, categories = [], features = [], listImages = [] } = req.body;
 
     try {
-        // Validate categories
-        const invalidCategories = await Promise.all(
-            category.map(async (catId) => {
-                const categoryData = await AdminCategories.findById(catId);
-                return categoryData ? null : catId;
-            })
-        );
-
-        if (invalidCategories.filter(Boolean).length > 0) {
-            return res.status(400).json({ success: false, message: `Invalid category IDs: ${invalidCategories.filter(Boolean).join(', ')}` });
-        }
-
-        // Ensure features and listImages are arrays
-        if (features && !Array.isArray(features)) {
-            return res.status(400).json({ success: false, message: 'Features must be an array.' });
-        }
-
-        if (listImages && !Array.isArray(listImages)) {
-            return res.status(400).json({ success: false, message: 'List images must be an array.' });
-        }
-
-        // Prepare updated data
-        const updatedProductData = { title, description, category, features, listImages };
-
-        // Update product
-        const updatedProduct = await Products.findByIdAndUpdate(req.params.id, updatedProductData, { new: true });
-
-        if (!updatedProduct) {
+        const product = await Products.findById(req.params.id);
+        if (!product) {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
 
+        const invalidCategories = await validateCategories(categories);
+        if (invalidCategories.length > 0) {
+            return res.status(400).json({ success: false, message: `Invalid categories IDs: ${invalidCategories.join(', ')}` });
+        }
+
+        const updatedData = {};
+        if (title) updatedData.title = title;
+        if (description) updatedData.description = description;
+        if (categories.length) updatedData.categories = categories;
+        if (features.length) updatedData.features = features;
+        if (listImages.length) updatedData.listImages = listImages;
+
+        const updatedProduct = await Products.findByIdAndUpdate(req.params.id, updatedData, { new: true });
+
         res.status(200).json({ success: true, data: updatedProduct });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Failed to update product.' });
     }
 };
-
 
 // Delete a Product by ID
 exports.deleteProducts = async (req, res) => {
     try {
         const deletedProduct = await Products.findByIdAndDelete(req.params.id);
+
         if (!deletedProduct) {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
-        res.status(200).json({ success: true, message: 'Product deleted successfully' });
+
+        res.status(200).json({ success: true, message: 'Product deleted successfully.' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Failed to delete product.' });
     }
 };
 
 // Get a Product by ID
 exports.getProductsById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const product = await Products.findById(id).populate('category', 'title image');
+        const product = await Products.findById(req.params.id)
+            .populate('categories', 'title image');
 
         if (!product) {
             return res.status(404).json({ success: false, message: 'Product not found' });
@@ -144,7 +121,7 @@ exports.getProductsById = async (req, res) => {
 
         res.status(200).json({ success: true, data: product });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Failed to fetch product.' });
     }
 };
-
