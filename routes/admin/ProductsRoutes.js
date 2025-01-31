@@ -15,5 +15,6 @@ router.post('/', ProductsController.createProducts);      // Create a new produc
 router.get('/:id', ProductsController.getProductsById);   // Get a product by ID
 router.put('/:id', ProductsController.updateProducts);    // Update a product by ID
 router.delete('/:id', ProductsController.deleteProducts); // Delete a product by ID
+router.get('/products/category/:categoryId', ProductsController.getProductsByCategoryId);
 
 module.exports = router;

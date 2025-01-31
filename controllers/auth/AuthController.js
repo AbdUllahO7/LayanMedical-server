@@ -41,7 +41,6 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
         try {
         const { email, password } = req.body;
-        console.log("Received email:", email, "Received password:", password);
     
         // Check if the user exists by email
         const user = await User.findOne({ email });
@@ -51,7 +50,6 @@ const loginUser = async (req, res) => {
     
         // Compare the provided password with the stored hashed password
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log("Password match result:", isMatch);
     
         if (!isMatch) {
             return res.status(400).json({ success: false, message: "Invalid password" });
@@ -156,9 +154,7 @@ const hashExistingPassword = async () => {
 
         // Save the updated user object with hashed password
         await user.save();
-        console.log(`Password for user ${user.email} has been hashed and updated.`);
       } else {
-        console.log("Password is already hashed.");
       }
     } else {
       console.log("User not found.");

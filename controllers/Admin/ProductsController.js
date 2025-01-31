@@ -47,11 +47,11 @@ exports.getAllProducts = async (req, res) => {
 
 // Update Create Product Function to Handle listImages Correctly
 exports.createProducts = async (req, res) => {
-    const { title, description, categories = [], features = [], listImages = [] } = req.body;
+    const { title, description, categories = [], features = "", listImages = [] } = req.body;
 
 
     try {
-        if (!title || !description || !categories.length) {
+        if (!title || !description ) {
             return createErrorResponse(res, 400, 'Title, description, and at least one category are required.');
         }
 
@@ -102,7 +102,7 @@ exports.updateProducts = async (req, res) => {
             ...(title && { title }),
             ...(description && { description }),
             ...(categories.length && { categories }),
-            ...(features.length && { features }),
+            ...(features && { features }),
             ...(imagesArray.length && { listImages: [...product.listImages, ...imagesArray] }) // Append images
         };
 
@@ -141,9 +141,36 @@ exports.getProductsById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
 
+
         res.status(200).json({ success: true, data: product });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Failed to fetch product.' });
     }
 };
+
+// Fetch products by category ID
+exports.getProductsByCategoryId = async (req, res) => {
+        try {
+        const categoryId = req.params.categoryId;
+    
+        // Validate category ID
+        const category = await AdminCategories.findById(categoryId);
+        if (!category) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+    
+        // Fetch products belonging to the specified category
+        const products = await Products.find({ categories: categoryId });
+    
+        if (products.length === 0) {
+            return res.status(404).json({ message: 'No products found for this category' });
+        }
+    
+        return res.status(200).json({ success: true,  data : products });
+        } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Server error' });
+        }
+    };
+    
