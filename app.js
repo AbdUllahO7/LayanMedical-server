@@ -8,11 +8,7 @@ const path = require("path");
 
 const authRouter = require('./routes/auth/authRoutes.js')
 
-const ProductsRoutes = require('./routes/user/ProductsRoutes.js')
-
-
-
-// admin 
+const ProductsRoutes = require('./routes/admin/ProductsRoutes.js')
 const CategoriesRoutes = require('./routes/admin/CategoryRoutes.js')
 
 
