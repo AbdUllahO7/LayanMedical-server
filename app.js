@@ -21,7 +21,7 @@ mongoose
 
 const app = express();
 const PORT = process.env.PORT ||5000;
-const allowedOrigins = ["http://localhost:5174","http://localhost:3000", "http://localhost:5173" , "http://localhost:5175" , "https://layan-medical.vercel.app"]
+const allowedOrigins = ["http://localhost:5174","http://localhost:3000", "http://localhost:3001",,"http://localhost:5173" , "http://localhost:5175" , "https://layan-medical.vercel.app"]
 
 
 app.use(
