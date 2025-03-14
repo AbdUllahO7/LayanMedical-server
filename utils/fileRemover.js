@@ -4,7 +4,6 @@ const path = require("path");
 const fileRemover = (filename) => {
     fs.unlink(path.join(__dirname, "../uploads", filename), function (err) {
         if (err && err.code === "ENOENT") {
-            // File doesn't exist
             console.log(`File ${filename} doesn't exist, won't remove it.`);
         } else if (err) {
             console.log(err.message);
